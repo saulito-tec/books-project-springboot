@@ -1,6 +1,7 @@
 package com.luv2code.books.controller;
 
 import com.luv2code.books.entity.Book;
+import com.luv2code.books.exception.BookNotFoundException;
 import com.luv2code.books.request.BookRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,11 +17,11 @@ import java.util.List;
 @Tag(name = "Books Rest API Endpoints", description = "Operations related to books")
 @RestController
 @RequestMapping("/api/books")
-public class bookController {
+public class BookController {
 
     private final List<Book> books = new ArrayList<>();
 
-    public bookController(){
+    public BookController(){
         initializeBooks();
     }
 
@@ -51,14 +52,15 @@ public class bookController {
     @Operation(summary = "Get a book by Id", description = "Retrieve a specific book by Id")
     @ResponseStatus(HttpStatus.OK)
     @GetMapping("/{id}")
-    public Book getBookById(@Parameter(description = "Id of book to be retrieved")@PathVariable @Min(value = 1)long id){
+    public Book getBookById(@Parameter(description = "Id of book to be retrieved")
+                                @PathVariable @Min(value = 1)long id){
         return books.stream()
                 .filter(book -> book.getId() == id)
                 .findFirst()
-                .orElse(null);
+                .orElseThrow(() -> new BookNotFoundException("Book not found - " + id));
     }
 
-    @Operation(summary = "Create a book by Id", description = "Add a new book to the list")
+    @Operation(summary = "Create a new book", description = "Add a new book to the list")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
     public void createBook(@Valid @RequestBody  BookRequest bookRequest){
@@ -73,20 +75,27 @@ public class bookController {
     @Operation(summary = "Update a book", description = "Update the details of an existing book")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PutMapping("/{id}")
-    public void updateBook(@Parameter(description = "Id of the book to update") @Valid @PathVariable @Min(value = 1) long id, @RequestBody BookRequest bookRequest){
+    public Book updateBook(@Parameter(description = "Id of the book to update") @Valid @PathVariable @Min(value = 1) long id, @RequestBody BookRequest bookRequest){
         for(int i = 0; i < books.size(); i++){
             if(books.get(i).getId() == id){
                 Book updatedBook = convertToBook(id, bookRequest);
                 books.set(i, updatedBook);
-                return;
+                return updatedBook;
             }
         }
+        throw new BookNotFoundException("Book not found - " + id);
+
     }
 
     @Operation(summary = "Delete a book", description = "Remove a book from the list")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{id}")
     public void deleteBook(@Parameter(description = "Id of the book to delete") @PathVariable @Min(value = 1) long id){
+        books.stream()
+                .filter(book -> book.getId() == id)
+                .findFirst()
+                .orElseThrow(() -> new BookNotFoundException("Book not found - " + id));
+
         books.removeIf(book -> book.getId() == id);
     }
 
